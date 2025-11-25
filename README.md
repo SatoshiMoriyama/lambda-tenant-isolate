@@ -1,38 +1,24 @@
 # lambda-tenant-isolate
 
-テナントごとにサイロ化された Lambda 関数を単一の API Gateway でルーティングするサンプルアプリケーションです。
+AWS Lambda Tenant Isolation 機能を使用して、単一の Lambda 関数でテナントごとに分離された実行環境を提供するサンプルアプリケーションです。
 
 ## アーキテクチャ
 
 ```
-API Gateway → Router Lambda → テナント別Lambda (A, B, C...)
+API Gateway → Lambda 関数（テナント分離実行環境）
 ```
 
 - リクエストヘッダー `x-tenant-id` でテナントを識別
-- Router Lambda がテナント ID に基づいて適切な Lambda 関数を呼び出し
-- 各テナントの Lambda は完全に分離された環境で実行
+- API Gateway が `X-Amz-Tenant-Id` ヘッダーとして Lambda に転送
+- Lambda の `TenancyConfig: PER_TENANT` により、テナントごとに分離された実行環境で処理
+- 各テナントは独立したメモリ空間と実行コンテキストを持つ
 
 ## プロジェクト構成
 
-- hello-world - Router Lambda 関数のコード（TypeScript）
-- events - テスト用のイベントファイル
-- hello-world/tests - ユニットテスト
+- hello-world/ - Lambda 関数のコード（TypeScript）
+- events/ - テスト用のイベントファイル
+- hello-world/tests/ - ユニットテスト
 - template.yaml - AWS リソース定義
-
-If you prefer to use an integrated development environment (IDE) to build and test your application, you can use the AWS Toolkit.  
-The AWS Toolkit is an open source plug-in for popular IDEs that uses the SAM CLI to build and deploy serverless applications on AWS. The AWS Toolkit also adds a simplified step-through debugging experience for Lambda function code. See the following links to get started.
-
-- [CLion](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-- [GoLand](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-- [IntelliJ](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-- [WebStorm](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-- [Rider](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-- [PhpStorm](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-- [PyCharm](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-- [RubyMine](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-- [DataGrip](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-- [VS Code](https://docs.aws.amazon.com/toolkit-for-vscode/latest/userguide/welcome.html)
-- [Visual Studio](https://docs.aws.amazon.com/toolkit-for-visual-studio/latest/user-guide/welcome.html)
 
 ## デプロイ
 
@@ -69,13 +55,12 @@ sam local start-api
 curl -H "x-tenant-id: tenant-a" http://localhost:3000/hello
 ```
 
-## テナントの追加
+## テナント分離の仕組み
 
-新しいテナント用の Lambda 関数を追加するには:
-
-1. `template.yaml` に新しい Lambda 関数リソースを追加
-2. Router Lambda（`hello-world/app.ts`）の `TENANT_LAMBDAS` マッピングに追加
-3. 再デプロイ
+- Lambda 関数の `TenancyConfig: TenantIsolationMode: PER_TENANT` により自動的にテナント分離
+- 新しいテナントは追加の設定なしで自動的に分離された環境で実行
+- `context.tenantId` でテナント ID を取得可能
+- テナントごとに独立したグローバル変数とメモリ空間
 
 ## ログの確認
 
